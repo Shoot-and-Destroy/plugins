@@ -58,6 +58,8 @@ The arguments `p`, `attacker`, `victim` and `killer` are player tables
 | `on_explode(p, x, y, z)` | p's grenade explodes | |
 | `on_reload(p)` | p reloads | |
 | `on_intel(p, action)` | action is "pickup", "capture" or "drop" | |
+| `on_login(p, role)` | p logged in with /login: "trusted", "guard", "mod", "admin" or "manager" | |
+| `on_message(from, topic, data)` | another plugin called `game.send(topic, data)`; `from` is its name | |
 
 ## Players
 
@@ -67,6 +69,7 @@ again later, call `game.player(id)`.
 **Fields:**
 - `id`, `name`, `team` (1, 2, 0), `alive`, `hp`, `kills`, `deaths`, `bot`;
 - `tool`, `weapon`, `blocks`, `grenades`, `intel` (carries one);
+- `ip`: its address as text (people only; bots have none);
 - `x`, `y`, `z` (see Coordinates below);
 - `ox`, `oy`, `oz`: where the player looks, as a unit vector.
 
@@ -82,6 +85,7 @@ again later, call `game.player(id)`.
 | `p:restock()` | full health, blocks, grenades and ammo |
 | `p:fog(r, g, b)` | p's sky colour only (0..255) |
 | `p:has_role(role)` | logged in as `role` or higher: "trusted", "guard", "mod", "admin", "manager" |
+| `p:kick(reason)` | disconnect p; everyone is told (not bots) |
 
 ## game
 
@@ -103,6 +107,30 @@ again later, call `game.player(id)`.
 | `game.spawn(team)` | the middle of a team's spawn area: x, y |
 | `game.objective(x, y, radius)` | modes only: bots go there and hold it; with no arguments they hunt again |
 | `game.set_intel_spot(team, x, y)`, `game.set_tent_spot(team, x, y)` | modes with `rules = "ctf"`: where a team's intel and tent stand |
+| `game.ban(p, minutes, reason)` | ban p's address (0 minutes: for good), in the server's ban list |
+| `game.server_info()` | `{name, map, mode, players, max_players, port}` |
+| `game.json_encode(value)` | a string of JSON; a table with keys 1..n is an array, any other an object |
+| `game.json_decode(text)` | the value, or nil and the error |
+| `game.url_encode(text)` | for a query string |
+| `game.send(topic, data)` | every other plugin's `on_message(from, topic, data)` at the next tick; `data` is plain data (it crosses as JSON) |
+
+## Plugins working together
+
+Each plugin is on its own, so they talk through `game.send` and
+`on_message`. One plugin can be the only one that talks to an outside
+service, and the others send it what to say:
+
+```lua
+-- in any plugin
+game.send("announce", {text = killer.name .. " is on a rampage"})
+
+-- in the plugin that talks to the outside service
+function plugin.on_message(from, topic, data)
+    if topic == "announce" then
+        -- post data.text wherever this plugin talks to
+    end
+end
+```
 
 ## Coordinates
 
