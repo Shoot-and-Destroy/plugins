@@ -114,6 +114,41 @@ again later, call `game.player(id)`.
 | `game.url_encode(text)` | for a query string |
 | `game.send(topic, data)` | every other plugin's `on_message(from, topic, data)` at the next tick; `data` is plain data (it crosses as JSON) |
 
+## The network
+
+A plugin reaches nothing outside unless the server's owner lists, in its
+section of `config.toml`, the hosts it may call:
+
+```toml
+[plugins.my_plugin]
+allow_hosts = ["api.example.com", "*.example.org"]   # "*" = any host
+```
+
+```lua
+local ok, err = game.http{
+    url = "https://api.example.com/scores",
+    method = "POST",                      -- GET by default
+    headers = {["Authorization"] = "Bearer " .. config.token},
+    json = {player = p.name, kills = 3},  -- or body = "a string"
+    timeout = 10,                         -- seconds, 1 to 30
+    on_done = function(status, body, err) -- status 0 and err when it failed
+        game.log("answered " .. status)
+    end,
+}
+-- ok is nil and err says why when the request was refused (a host not
+-- listed, not http(s), too many waiting)
+```
+
+- The request runs on a thread of the server's own; `on_done` is called
+  on a plugin tick (a tenth of a second) after the answer arrives. The
+  game never waits for it.
+- http and https only, no redirects (one could lead to a host not
+  listed), answers up to 1 MB, 16 requests waiting per plugin.
+- Keep secrets (tokens, webhook URLs) in the plugin's `config.toml`
+  section, never in the plugin's file.
+- An answer that arrives after the map changed is dropped: the plugin was
+  loaded again.
+
 ## Plugins working together
 
 Each plugin is on its own, so they talk through `game.send` and
