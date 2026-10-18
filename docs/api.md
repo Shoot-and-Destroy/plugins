@@ -54,6 +54,7 @@ The arguments `p`, `attacker`, `victim` and `killer` are player tables
 | `on_chat(p, text, team_only)` | a chat line, not a /command | new text, or false to drop it |
 | `on_tool(p, tool)` | p changes tool: 0 spade, 1 block, 2 gun, 3 grenade | false refuses |
 | `on_weapon(p, weapon)` | p changes weapon: 0 rifle, 1 SMG, 2 shotgun | false refuses |
+| `on_class(p, name, by)` | next gen CTF: p picks a class ("commando", "rocketeer", "marksman", "miner"); by is "client", "join" or "bot" | false refuses |
 | `on_grenade(p)` | p throws a grenade | false refuses |
 | `on_explode(p, x, y, z)` | p's grenade explodes | |
 | `on_reload(p)` | p reloads | |
@@ -70,6 +71,7 @@ again later, call `game.player(id)`.
 - `id`, `name`, `team` (1, 2, 0), `alive`, `hp`, `kills`, `deaths`, `bot`;
 - `tool`, `weapon`, `blocks`, `grenades`, `intel` (carries one);
 - `ip`: its address as text (people only; bots have none);
+- `class`: its class's name in the next gen CTF (nil in other modes);
 - `x`, `y`, `z` (see Coordinates below);
 - `ox`, `oy`, `oz`: where the player looks, as a unit vector.
 
@@ -86,6 +88,7 @@ again later, call `game.player(id)`.
 | `p:fog(r, g, b)` | p's sky colour only (0..255) |
 | `p:has_role(role)` | logged in as `role` or higher: "trusted", "guard", "mod", "admin", "manager" |
 | `p:kick(reason)` | disconnect p; everyone is told (not bots) |
+| `p:set_class(name)` | next gen CTF: pick that class for p (a living p respawns with it); false when refused |
 
 ## game
 
@@ -107,12 +110,47 @@ again later, call `game.player(id)`.
 | `game.spawn(team)` | the middle of a team's spawn area: x, y |
 | `game.objective(x, y, radius)` | modes only: bots go there and hold it; with no arguments they hunt again |
 | `game.set_intel_spot(team, x, y)`, `game.set_tent_spot(team, x, y)` | modes with `rules = "ctf"`: where a team's intel and tent stand |
+| `game.classes()` | next gen CTF: every class's figures, a list (Commando, Rocketeer, Marksman, Miner) |
+| `game.class(name)` | one class's figures (by name or number 0..3), or nil |
+| `game.set_class(name, figures)` | change a class's figures for this map (see Classes); true, or false and the first key refused |
 | `game.ban(p, minutes, reason)` | ban p's address (0 minutes: for good), in the server's ban list |
 | `game.server_info()` | `{name, map, mode, players, max_players, port}` |
 | `game.json_encode(value)` | a string of JSON; a table with keys 1..n is an array, any other an object |
 | `game.json_decode(text)` | the value, or nil and the error |
 | `game.url_encode(text)` | for a query string |
 | `game.send(topic, data)` | every other plugin's `on_message(from, topic, data)` at the next tick; `data` is plain data (it crosses as JSON) |
+
+## Classes
+
+The next gen CTF has four classes. Each is a table of figures; the server
+owner sets them in config.toml (`[classes.<name>]`) and a plugin may change
+them with `game.set_class` for the map it runs on (every map starts from
+config.toml again). Every player's game is told at once: the class screen,
+the speed and jump it predicts, its health.
+
+| Key | Range | Means |
+| --- | --- | --- |
+| `health` | 1..1000 | the most it has (130, 85, 70, 125) |
+| `speed` | 0.3..3 | ground speed, times the usual |
+| `jump` | 0.1..1.5 | the jump's upward speed (0.36 the usual) |
+| `weapon` | "rifle", "smg", "shotgun", "rocket" | its gun |
+| `blocks` | 0..255 | blocks carried |
+| `gear` | "grenades", "drill" | the grenade slot |
+| `gear_count` | 0..255 | grenades or drill charges |
+| `jetpack` | true, false | worn from every spawn |
+| `dig` | 1, 3 | the spade's dig: the usual three blocks, or 3x3x3 |
+| `perk` | "none", "sentry", "landmine", "dynamite", "revive" | the streak perk |
+| `swing` | 0.05..2 | seconds between spade swings (left button) |
+| `title`, `blurb` | 31 and 95 bytes | its name and line on the class screen |
+| `enabled` | true, false | false: nobody may pick it (the last one on stays on) |
+
+```lua
+function plugin.on_init()
+    -- a slower, tougher Miner and no Rocketeer on this server
+    game.set_class("miner", {health = 160, speed = 0.9})
+    game.set_class("rocketeer", {enabled = false})
+end
+```
 
 ## The network
 
