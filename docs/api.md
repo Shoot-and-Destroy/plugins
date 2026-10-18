@@ -133,7 +133,8 @@ the speed and jump it predicts, its health.
 | `health` | 1..1000 | the most it has (130, 85, 70, 125) |
 | `speed` | 0.3..3 | ground speed, times the usual |
 | `jump` | 0.1..1.5 | the jump's upward speed (0.36 the usual) |
-| `weapon` | "rifle", "smg", "shotgun", "rocket" | its gun |
+| `weapon` | "rifle", "smg", "shotgun", "rocket", "revolver" | its gun |
+| `secondary` | "none" or a weapon | a second gun it swaps with the first ("revolver": the Commando's) |
 | `blocks` | 0..255 | blocks carried |
 | `gear` | "grenades", "drill" | the grenade slot |
 | `gear_count` | 0..255 | grenades or drill charges |
