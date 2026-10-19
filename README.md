@@ -35,6 +35,10 @@ A plugin that is a game mode (`tdm`, `koth`, `push`) is played with
 | [welcome](plugins/welcome.lua) | greets named players | extension |
 | [spawn_protect](plugins/spawn_protect.lua) | no damage for a few seconds after spawning | extension |
 | [rampage](plugins/rampage.lua) | 3 quick kills: restock, red sky, announced | extension |
+| [medkit](plugins/medkit.lua) | one heal per spawn, `!medkit` | extension |
+| [votekick](plugins/votekick.lua) | `!votekick`, `!y`, `!cancel` with staff immunity | extension |
+| [disco](plugins/disco.lua) | staff `!disco`: the sky cycles through colours | extension |
+| [daycycle](plugins/daycycle.lua) | a slow day/sunset/night sky | extension |
 
 More arrive in batches. The scripts that will not be ported, and why, are in
 [docs/not-ported.md](docs/not-ported.md).

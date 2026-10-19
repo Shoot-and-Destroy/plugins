@@ -13,6 +13,10 @@ for Shoot and Destroy's server and keep their original licence.
 | welcome | welcome.py | mat^2 (maintainer) | PySnip `feature_server/scripts` | GPL-3.0 |
 | spawn_protect | spawn_protect.py | unknown (PySnip) | PySnip `feature_server/scripts` | GPL-3.0 |
 | rampage | rampage.py | hompy (maintainer) | PySnip `feature_server/scripts` | GPL-3.0 |
+| medkit | medkit.py | Booboorocks998, mat^2 (maintainer) | PySnip `feature_server/scripts` | GPL-3.0 |
+| votekick | votekick.py | James Hofmann (triplefox) | pyspades | GPL-3.0 |
+| disco | disco.py | mat^2 (maintainer) | pyspades | GPL-3.0 |
+| daycycle | daycycle.py | hompy (maintainer) | pyspades | GPL-3.0 |
 
 Sources:
 
