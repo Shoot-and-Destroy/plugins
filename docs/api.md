@@ -72,6 +72,8 @@ again later, call `game.player(id)`.
 - `tool`, `weapon`, `blocks`, `grenades`, `intel` (carries one);
 - `ip`: its address as text (people only; bots have none);
 - `class`: its class's name in the next gen CTF (nil in other modes);
+- `assists`, `score`, `captures`, `shots`, `hits`, `blocks_placed`;
+- `squad`, `reloading`, `crouching`, `sprinting`, `airborne`, `wade`, `jetpack`;
 - `x`, `y`, `z` (see Coordinates below);
 - `ox`, `oy`, `oz`: where the player looks, as a unit vector.
 
@@ -89,6 +91,14 @@ again later, call `game.player(id)`.
 | `p:has_role(role)` | logged in as `role` or higher: "trusted", "guard", "mod", "admin", "manager" |
 | `p:kick(reason)` | disconnect p; everyone is told (not bots) |
 | `p:set_class(name)` | next gen CTF: pick that class for p (a living p respawns with it); false when refused |
+| `p:set_team(0|1|2)` | spectator, blue or red; the mode's team rules still apply |
+| `p:set_tool(0..3)` | spade, block, gun or grenade; the mode's limits still apply |
+| `p:set_weapon(0|1|2)` | rifle, SMG or shotgun; the usual clip is refilled |
+| `p:set_ammo(clip, reserve)` | set the current and reserve ammunition |
+| `p:set_blocks(n)`, `p:set_grenades(n)` | set the inventory (0..255) |
+| `p:set_score(n)`, `p:set_kills(n)`, `p:set_deaths(n)`, `p:set_assists(n)` | personal scoreboard columns |
+| `p:set_squad(n)` | 0 alone, 1..16; the same rules as the client's squad command |
+| `p:set_jetpack(true|false)` | grant or remove the jetpack for this life |
 
 ## game
 
@@ -100,6 +110,11 @@ again later, call `game.player(id)`.
 | `game.notice(text[, team])` | a line every player (or one team) reads |
 | `game.fog(r, g, b)`, `game.get_fog()` | everyone's sky colour |
 | `game.score(team)`, `game.set_score(team, n)`, `game.score_limit()` | the scores |
+| `game.set_score_limit(n)`, `game.set_capture_limit(n)` | the score the match ends at (1..255) |
+| `game.end_match(team)` | the same as `game.win(team)` |
+| `game.team_name(team, name)`, `game.team_color(team, r, g, b)` | the two team labels and colours |
+| `game.next_map()`, `game.set_map(name)`, `game.set_mode(name)` | queued map/mode changes (see Dangerous calls) |
+| `game.run_command(text)` | one console command from the owner's allow-list (see Dangerous calls) |
 | `game.win(team)` | that team wins; the next map starts |
 | `game.time()` | the game clock in seconds |
 | `game.later(seconds, fn)` | call fn later; at most 64 pending per plugin |
@@ -119,6 +134,29 @@ again later, call `game.player(id)`.
 | `game.json_decode(text)` | the value, or nil and the error |
 | `game.url_encode(text)` | for a query string |
 | `game.send(topic, data)` | every other plugin's `on_message(from, topic, data)` at the next tick; `data` is plain data (it crosses as JSON) |
+
+## Dangerous calls
+
+`game.set_mode`, `game.set_map`, `game.next_map` and `game.run_command` are
+**opt-in** in the server's config:
+
+```toml
+[plugins]
+allow_map_change = false
+allow_commands = []       # names without the slash, e.g. ["say", "addbot"]
+```
+
+They are queued and applied at the end of the plugin tick. This is not a
+convenience: a map reset calls `plugins_map_start`, which closes every Lua
+state, so doing it inside a Lua call would free the state that is still
+running. `game.run_command` never accepts `/shutdown`, `/login` or `/logout`,
+rejects newlines and shell chaining, and runs only the listed commands.
+`game.set_map` validates the map name and its files, and refuses paths.
+`game.set_mode` validates the mode name; the map's `map_fits` still applies
+at the next load.
+
+`game.set_teams`/one-team FFA, per-player speed, world-cell edits, entities,
+squad leaders and persistent storage are not exposed yet.
 
 ## Classes
 
