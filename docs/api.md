@@ -7,7 +7,8 @@ This is the contract between a plugin and the Shoot and Destroy server.
 - A plugin is one file, `Resources/plugins/<name>.lua`. The name may use
   only `a-z`, `0-9`, `_` and `-`.
 - The file runs once each time a map starts. It must return a table; the
-  functions in that table named `on_*` are its events.
+  functions in that table named `on_*` are its events. Its variables start
+  over at every map; what must last goes in `game.store`.
 - Each plugin has its own Lua state, so plugins never share variables.
 - The sandbox gives `base`, `table`, `string` and `math`. There is no `io`,
   `os`, `require` or `load`.
@@ -51,7 +52,7 @@ The arguments `p`, `attacker`, `victim` and `killer` are player tables
 | `on_kill(killer, victim, reason)` | a death; killer may be nil; reason: 0 body, 1 head, 2 melee, 3 grenade, 4 fall, 5 team change, 6 weapon change | |
 | `on_build(p, x, y, z)` | p places a block (also once per cell of a block line) | false refuses |
 | `on_destroy(p, x, y, z, kind)` | a block is broken; kind is "spade", "dig" (three blocks), "gun" or "grenade" | false refuses |
-| `on_chat(p, text, team_only)` | a chat line, not a /command | new text, or false to drop it |
+| `on_chat(p, text, team_only)` | a chat line, not a /command (see Commands) | new text, or false to drop it |
 | `on_tool(p, tool)` | p changes tool: 0 spade, 1 block, 2 gun, 3 grenade | false refuses |
 | `on_weapon(p, weapon)` | p changes weapon: 0 rifle, 1 SMG, 2 shotgun | false refuses |
 | `on_class(p, name, by)` | next gen CTF: p picks a class ("commando", "rocketeer", "marksman", "miner"); by is "client", "join" or "bot" | false refuses |
@@ -133,7 +134,74 @@ again later, call `game.player(id)`.
 | `game.json_encode(value)` | a string of JSON; a table with keys 1..n is an array, any other an object |
 | `game.json_decode(text)` | the value, or nil and the error |
 | `game.url_encode(text)` | for a query string |
+| `game.command(name, [options], fn)` | a chat command typed with `/` (see Commands) |
+| `game.store`, `game.store_save()` | a table kept across maps and restarts (see Keeping data) |
 | `game.send(topic, data)` | every other plugin's `on_message(from, topic, data)` at the next tick; `data` is plain data (it crosses as JSON) |
+
+## Commands
+
+`game.command(name, [options], fn)` adds a chat command typed with `/`,
+like the server's own (`/kick`, `/help`). Call it when the file runs, at
+every map:
+
+```lua
+game.command("hello", {help = "Says hello"}, function(p, args, line)
+    return "hello " .. (p and p.name or "console")
+end)
+
+game.command("wipe", {role = "admin", help = "Clears the scores"}, function(p)
+    game.set_score(1, 0)
+    game.set_score(2, 0)
+end)
+```
+
+- `name`: `a-z`, `0-9`, `_` and `-`, 1 to 30 characters, with or without
+  the `/`. Players may type it in any case.
+- `options.role`: who may use it, that role or a higher one ("trusted",
+  "guard", "mod", "admin", "manager"); none means everyone. The server
+  checks it: `fn` is never called for anyone else. The console may use any
+  command.
+- `options.help`: its line in `/help`, shown only to those who may use it.
+- `fn(p, args, line)`: `p` is the player, or nil from the console; `args`
+  the words after the name (`/hello a b` gives `{"a", "b"}`); `line` the
+  rest as typed. A string it returns is sent back to whoever typed it.
+- The server's commands come first: a name the server or another plugin
+  already has is refused, and `game.command` returns false
+  (`EVT plugin action=command_refused why=taken`). It returns true when the
+  command is added.
+- At most 16 commands a plugin.
+
+Remember that the game is played with a gamepad: a command is for admins
+and tests, never something a player needs to play.
+
+## Keeping data: game.store
+
+`game.store` is a table that outlives the map and the server's restarts:
+everything else in a plugin starts over at every map.
+
+```lua
+game.store.visits = (game.store.visits or 0) + 1
+
+function plugin.on_join(p)
+    game.store.seen = game.store.seen or {}
+    game.store.seen[p.name] = true
+    game.store_save()
+end
+```
+
+- It is read when the plugin loads, before its file runs.
+- It is written when the map ends, when the server stops, and on the next
+  tick after `game.store_save()`. Call `game.store_save()` after a change
+  that must survive a crash.
+- It holds what JSON holds: tables, strings, numbers and booleans. A
+  function or a player in it stops the save (`EVT plugin
+  action=store_refused why=encode`). Keep player names or ids, not players.
+- At most 1 MB; past that the save is refused (`why=size`).
+- On disk it is `Resources/plugins/data/<name>.json`, one file a plugin;
+  a plugin sees only its own. The server's owner may read or edit it while
+  the server is off. A file that is not a JSON object is moved to
+  `<name>.json.bad` and the store starts empty.
+- `game.store = {}` replaces it all.
 
 ## Dangerous calls
 
