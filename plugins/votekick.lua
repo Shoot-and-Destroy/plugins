@@ -1,16 +1,15 @@
--- votekick: !votekick <player> <reason>, !y, !cancel.
+-- votekick: /votekick <player> <reason>, /y, /cancel.
 --
 -- Ported to Lua for Shoot and Destroy from votekick.py (pyspades), by
 -- James Hofmann (triplefox), 2012. Original licence: GPL-3.0.
 --
 -- Staff are immune, a bot cannot be voted, one vote runs at a time, and an
--- instigator waits `cooldown` seconds between votes. The command is chat
--- text with an exclamation mark, not a server /command, so it works for a
--- normal player on a server with no admin access.
+-- instigator waits `cooldown` seconds between votes. The commands need no
+-- role, so any player may use them.
 --
 -- config.toml (all optional):
 --   [plugins.votekick]
---   percent = 50          # share of the humans that must say !y (at least 2)
+--   percent = 50          # share of the humans that must say /y (at least 2)
 --   seconds = 120         # how long a vote stays open
 --   cooldown = 120        # between votes started by the same player
 --   reason = true         # require a reason
@@ -70,7 +69,7 @@ local function start(p, target, reason)
         return
     end
     if REASON and reason == "" then
-        p:message("Give a reason: !votekick <player> <reason>")
+        p:message("Give a reason: /votekick <player> <reason>")
         return
     end
     local now = game.time()
@@ -83,7 +82,7 @@ local function start(p, target, reason)
     vote = {name = target.name, id = target.id, by = p.id, reason = reason, yes = {[p.id] = true}, need = needed(), token = token}
     game.notice(p.name .. " started a votekick against " .. target.name ..
                 " (" .. needed() .. " votes). Reason: " .. (reason ~= "" and reason or "none") ..
-                ". Say !y to agree.")
+                ". Say /y to agree.")
     game.log("votekick start target=" .. target.name .. " by=" .. p.name .. " need=" .. needed())
     local mine = vote.token
     game.later(SECONDS, function()
@@ -93,54 +92,52 @@ local function start(p, target, reason)
     end)
 end
 
-function plugin.on_chat(p, text)
-    local cmd, rest = text:match("^(!%a+)%s*(.*)$")
-    if cmd == nil then
-        return
+game.command("y", {help = "Votes yes in a votekick"}, function(p)
+    if p == nil then
+        return "the console has no vote"
     end
-    cmd = cmd:lower()
-    if cmd == "!y" then
-        if vote == nil then
-            p:message("No votekick in progress.")
-            return false
-        end
-        if p.id ~= vote.id and vote.yes[p.id] == nil then
-            vote.yes[p.id] = true
-            local n = 0
-            for _ in pairs(vote.yes) do
-                n = n + 1
-            end
-            game.notice(p.name .. " voted yes (" .. n .. "/" .. vote.need .. ").")
-            if n >= vote.need then
-                local target = game.player(vote.id)
-                local name = vote.name
-                if target ~= nil then
-                    target:kick("votekicked: " .. (vote.reason ~= "" and vote.reason or "no reason"))
-                end
-                finish("passed")
-                game.log("votekick passed target=" .. name)
-            end
-        end
-        return false
-    elseif cmd == "!cancel" then
-        if vote == nil then
-            p:message("No votekick in progress.")
-        elseif p.id == vote.by or p:has_role("mod") then
-            finish("cancelled")
-        else
-            p:message("Only the instigator or staff can cancel it.")
-        end
-        return false
-    elseif cmd == "!votekick" then
-        local name, reason = rest:match("^(%S+)%s*(.*)$")
-        if name == nil then
-            p:message("Usage: !votekick <player> <reason>")
-            return false
-        end
-        start(p, game.find(name), reason)
-        return false
+    if vote == nil then
+        return "No votekick in progress."
     end
-end
+    if p.id ~= vote.id and vote.yes[p.id] == nil then
+        vote.yes[p.id] = true
+        local n = 0
+        for _ in pairs(vote.yes) do
+            n = n + 1
+        end
+        game.notice(p.name .. " voted yes (" .. n .. "/" .. vote.need .. ").")
+        if n >= vote.need then
+            local target = game.player(vote.id)
+            local name = vote.name
+            if target ~= nil then
+                target:kick("votekicked: " .. (vote.reason ~= "" and vote.reason or "no reason"))
+            end
+            finish("passed")
+            game.log("votekick passed target=" .. name)
+        end
+    end
+end)
+
+game.command("cancel", {help = "Cancels your votekick (staff: any)"}, function(p)
+    if vote == nil then
+        return "No votekick in progress."
+    elseif p == nil or p.id == vote.by or p:has_role("mod") then
+        finish("cancelled")
+    else
+        return "Only the instigator or staff can cancel it."
+    end
+end)
+
+game.command("votekick", {help = "Starts a vote to kick a player. Usage: votekick <player> <reason>"}, function(p, args, rest)
+    if p == nil then
+        return "the console can /kick"
+    end
+    local name, reason = rest:match("^(%S+)%s*(.*)$")
+    if name == nil then
+        return "Usage: /votekick <player> <reason>"
+    end
+    start(p, game.find(name), reason)
+end)
 
 function plugin.on_leave(p)
     last[p.id] = nil

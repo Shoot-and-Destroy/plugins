@@ -1,4 +1,4 @@
--- disco: !disco (staff) cycles the sky through bright colours.
+-- disco: /disco (staff) cycles the sky through bright colours.
 --
 -- Ported to Lua for Shoot and Destroy from disco.py (pyspades), maintained by
 -- mat^2. Original licence: GPL-3.0.
@@ -36,14 +36,7 @@ function plugin.on_init()
     token = token + 1
 end
 
-function plugin.on_chat(p, text)
-    if text:lower() ~= "!disco" then
-        return
-    end
-    if not p:has_role("admin") then
-        p:message("Staff only.")
-        return false
-    end
+game.command("disco", {role = "admin", help = "Starts or stops the disco sky"}, function(p)
     on = not on
     token = token + 1
     if on then
@@ -59,7 +52,6 @@ function plugin.on_chat(p, text)
         game.notice("The party has been stopped.")
     end
     game.log("disco on=" .. tostring(on))
-    return false
-end
+end)
 
 return plugin
