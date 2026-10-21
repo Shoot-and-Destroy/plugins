@@ -18,9 +18,19 @@ for Shoot and Destroy's server and keep their original licence.
 | disco | disco.py | mat^2 (maintainer) | pyspades | GPL-3.0 |
 | daycycle | daycycle.py | hompy (maintainer) | pyspades | GPL-3.0 |
 
+These are not ports: they were written from scratch for Shoot and Destroy,
+inspired by ideas of the lsd server.
+
+| Plugin | Inspired by | Author(s) | Source |
+| --- | --- | --- | --- |
+| totp | lsd's admin TOTP login | totallynotaburner | lsd |
+| aliases | lsd's alias tracking | totallynotaburner | lsd |
+| sel | lsd's sel.lua (and WorldEdit) | totallynotaburner | lsd |
+
 Sources:
 
 - PySnip: https://github.com/NateShoffner/PySnip
 - ace-of-spades-scripts: https://github.com/MarshmelloOS/ace-of-spades-scripts
 - pyspades-userscripts: https://github.com/matpow2/pyspades-userscripts
 - piqueserver-extras: https://github.com/piqueserver/piqueserver-extras
+- lsd: https://66.135.15.57/lsd

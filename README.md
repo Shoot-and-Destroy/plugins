@@ -35,9 +35,12 @@ A plugin that is a game mode (`tdm`, `koth`, `push`) is played with
 | [welcome](plugins/welcome.lua) | greets named players | extension |
 | [spawn_protect](plugins/spawn_protect.lua) | no damage for a few seconds after spawning | extension |
 | [rampage](plugins/rampage.lua) | 3 quick kills: restock, red sky, announced | extension |
-| [medkit](plugins/medkit.lua) | one heal per spawn, `!medkit` | extension |
-| [votekick](plugins/votekick.lua) | `!votekick`, `!y`, `!cancel` with staff immunity | extension |
-| [disco](plugins/disco.lua) | staff `!disco`: the sky cycles through colours | extension |
+| [medkit](plugins/medkit.lua) | one heal per spawn, `/medkit` | extension |
+| [votekick](plugins/votekick.lua) | `/votekick`, `/y`, `/cancel` with staff immunity | extension |
+| [disco](plugins/disco.lua) | staff `/disco`: the sky cycles through colours | extension |
+| [totp](plugins/totp.lua) | a second factor for `/login`: an authenticator app's code (`/otp`) | admin |
+| [aliases](plugins/aliases.lua) | `/aliases`: the names each address joined with, kept across restarts | admin |
+| [sel](plugins/sel.lua) | building tools: `/pos1`, `/pos2`, `/fill`, `/clear`, `/copy`, `/paste`, `/undo` | building |
 | [daycycle](plugins/daycycle.lua) | a slow day/sunset/night sky | extension |
 
 More arrive in batches. The scripts that will not be ported, and why, are in

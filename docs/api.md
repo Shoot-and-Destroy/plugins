@@ -60,7 +60,7 @@ The arguments `p`, `attacker`, `victim` and `killer` are player tables
 | `on_explode(p, x, y, z)` | p's grenade explodes | |
 | `on_reload(p)` | p reloads | |
 | `on_intel(p, action)` | action is "pickup", "capture" or "drop" | |
-| `on_login(p, role)` | p logged in with /login: "trusted", "guard", "mod", "admin" or "manager" | |
+| `on_login(p, role)` | p gave /login the right password for "trusted", "guard", "mod", "admin" or "manager" (p already has the role while asked) | false refuses the login (a second factor, see totp) |
 | `on_message(from, topic, data)` | another plugin called `game.send(topic, data)`; `from` is its name | |
 
 ## Players
@@ -118,10 +118,14 @@ again later, call `game.player(id)`.
 | `game.run_command(text)` | one console command from the owner's allow-list (see Dangerous calls) |
 | `game.win(team)` | that team wins; the next map starts |
 | `game.time()` | the game clock in seconds |
+| `game.unix_time()` | the machine's clock: whole seconds since 1970 (a test may run the game clock faster, never this one) |
 | `game.later(seconds, fn)` | call fn later; at most 64 pending per plugin |
 | `game.log(text)` | an `EVT plugin action=log` line |
 | `game.map_size()` | x, y, z |
 | `game.cell(x, y, z)` | true when the block is solid |
+| `game.color(x, y, z)` | the block's r, g, b, or nothing when it is air |
+| `game.set_block(x, y, z, r, g, b)` | put a block (see Changing the map) |
+| `game.clear_block(x, y, z)` | take a block away; what then hangs on nothing falls (see Changing the map) |
 | `game.ground(x, y)` | the column's top block (its smallest z) |
 | `game.spawn(team)` | the middle of a team's spawn area: x, y |
 | `game.objective(x, y, radius)` | modes only: bots go there and hold it; with no arguments they hunt again |
@@ -202,6 +206,22 @@ end
   the server is off. A file that is not a JSON object is moved to
   `<name>.json.bad` and the store starts empty.
 - `game.store = {}` replaces it all.
+
+## Changing the map
+
+`game.set_block` and `game.clear_block` change the map for everyone, like a
+player's build and dig, without spending anyone's blocks. Each returns
+true, or false and why:
+
+- `"outside"`: out of the map, or at z 62 or 63 (the water layers);
+- `"protected"`: a cell the mode or the map keeps (Arena's walls, a
+  protected base);
+- `"rate"`: the plugin changed enough this tick. A plugin may set 4096
+  blocks or clear 1024 a tenth of a second; past that, try the rest on the
+  next `on_tick` (sel does).
+
+Clearing a cell that is air already, or setting one, returns true and
+costs nothing extra.
 
 ## Dangerous calls
 
