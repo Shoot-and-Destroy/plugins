@@ -5,6 +5,10 @@
 -- Ported to Lua for Shoot and Destroy from tdm.py (PySnip
 -- feature_server/scripts), maintained by Triplefox. Original licence: GPL-3.0.
 
+-- A Lua game mode: the 0.75 server plays only ctf and babel, so this
+-- plugin is for the 1.0 server alone (first, before anything runs).
+game.supported_profiles("10")
+
 local mode = {name = "tdm", wire = "ctf", mode = true}
 
 function mode.on_init()

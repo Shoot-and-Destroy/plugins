@@ -11,6 +11,10 @@
 -- map's score limit (capture_limit in its toml) wins. Bots go to the hill
 -- (game.objective) and fight for it.
 
+-- A Lua game mode: the 0.75 server plays only ctf and babel, so this
+-- plugin is for the 1.0 server alone (first, before anything runs).
+game.supported_profiles("10")
+
 local mode = {name = "koth", wire = "ctf", mode = true}
 
 local RADIUS = 8        -- blocks round the middle

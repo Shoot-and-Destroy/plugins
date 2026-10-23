@@ -23,15 +23,18 @@ names its original author (see [CREDITS.md](CREDITS.md)).
 3. Restart the server, or change the map: plugins load again with every map.
 
 A plugin that is a game mode (`tdm`, `koth`, `push`) is played with
-`--gamemode <name>` instead of being listed.
+`--gamemode <name>` instead of being listed. Those three are for the 1.0
+server only (`game.supported_profiles("10")`): the 0.75 server
+(`--profile 075`) plays ctf and babel alone and refuses them. Every other
+plugin here runs on both servers.
 
 ## Plugins
 
 | Plugin | What it does | Kind |
 | --- | --- | --- |
-| [tdm](plugins/tdm.lua) | team deathmatch: every kill scores | mode |
-| [koth](plugins/koth.lua) | king of the hill | mode |
-| [push](plugins/push.lua) | capture the flag across the whole map | mode |
+| [tdm](plugins/tdm.lua) | team deathmatch: every kill scores | mode (1.0 only) |
+| [koth](plugins/koth.lua) | king of the hill | mode (1.0 only) |
+| [push](plugins/push.lua) | capture the flag across the whole map | mode (1.0 only) |
 | [welcome](plugins/welcome.lua) | greets named players | extension |
 | [spawn_protect](plugins/spawn_protect.lua) | no damage for a few seconds after spawning | extension |
 | [rampage](plugins/rampage.lua) | 3 quick kills: restock, red sky, announced | extension |
