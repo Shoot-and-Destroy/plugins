@@ -24,6 +24,51 @@ A game mode is a plugin whose table has `mode = true`, played with
 - `rules = "ctf"`: play over capture the flag's rules (intels, tents, the
   bots' CTF roles).
 
+## Profiles: the 1.0 server and the 0.75 server
+
+One server program runs as one of two profiles: `"10"` (protocol 1.0, the
+default) or `"075"` (`--profile 075`: the classic 0.75 game for unmodified
+0.75 clients, with no classes, perks, squads or next gen modes). A plugin
+says which ones it is written for, **as the first line of its file**:
+
+```lua
+game.supported_profiles("10")        -- only the 1.0 server
+game.supported_profiles("10", "075") -- both
+game.supported_profiles("075")       -- only the 0.75 server
+```
+
+- When the running profile is not listed, the call stops the file right
+  there (nothing after it runs) and the server does not load the plugin:
+  `EVT plugin action=refused name=<name> why=profile from=script`. The map
+  and the other plugins are not affected. Code above the call has already
+  run, so put it first. Catching it with `pcall` does not help: the plugin
+  is refused all the same.
+- It is taken only while the file runs (from an event it is an error), and
+  an unknown profile name is an error. `"1.0"` and `"0.75"` are accepted too.
+- A plugin that says nothing is loaded in every profile. The 1.0 only calls
+  it makes on the 0.75 server are refused (below), never silently ignored.
+
+The server's owner may also keep a plugin out of a profile, in that
+profile's config file (`config.toml` for 1.0, `config-075.toml` for 0.75):
+
+```toml
+[plugins.airstrike]
+profiles = ["10"]   # not on the 0.75 server
+```
+
+That is checked before the file runs (`from=config` in the EVT line). Both
+rules apply: the plugin must pass the config's list and its own.
+
+**1.0 only** (marked so below): the classes (`game.classes`, `game.class`,
+`game.set_class`, `p:set_class`, the `class` field, the `on_class` event),
+the perks (`p:set_jetpack`), the squads (`p:set_squad`), and `game.set_mode`
+to a mode the 0.75 profile does not have (it has only `ctf` and `babel`;
+`game.next_map` is refused too should the running mode be another one). On
+the 0.75 server a query among them returns `nil` and the reason, an action
+`false` and the reason (`"profile: protocol 1.0 only, ..."`), `p.class` is
+nil and `on_class` is never called. Each is logged once a map:
+`EVT plugin action=refused name=<name> why=profile what=game.set_class`.
+
 ## Events
 
 Every plugin is asked, in the order of `load`. A mode is asked last.
@@ -55,7 +100,7 @@ The arguments `p`, `attacker`, `victim` and `killer` are player tables
 | `on_chat(p, text, team_only)` | a chat line, not a /command (see Commands) | new text, or false to drop it |
 | `on_tool(p, tool)` | p changes tool: 0 spade, 1 block, 2 gun, 3 grenade | false refuses |
 | `on_weapon(p, weapon)` | p changes weapon: 0 rifle, 1 SMG, 2 shotgun | false refuses |
-| `on_class(p, name, by)` | next gen CTF: p picks a class ("commando", "rocketeer", "marksman", "miner"); by is "client", "join" or "bot" | false refuses |
+| `on_class(p, name, by)` | **1.0 only.** next gen CTF: p picks a class ("commando", "rocketeer", "marksman", "miner"); by is "client", "join" or "bot" | false refuses |
 | `on_grenade(p)` | p throws a grenade | false refuses |
 | `on_explode(p, x, y, z)` | p's grenade explodes | |
 | `on_reload(p)` | p reloads | |
@@ -72,7 +117,8 @@ again later, call `game.player(id)`.
 - `id`, `name`, `team` (1, 2, 0), `alive`, `hp`, `kills`, `deaths`, `bot`;
 - `tool`, `weapon`, `blocks`, `grenades`, `intel` (carries one);
 - `ip`: its address as text (people only; bots have none);
-- `class`: its class's name in the next gen CTF (nil in other modes);
+- `class`: its class's name in the next gen CTF (nil in other modes and on
+  the 0.75 server; **1.0 only**);
 - `assists`, `score`, `captures`, `shots`, `hits`, `blocks_placed`;
 - `squad`, `reloading`, `crouching`, `sprinting`, `airborne`, `wade`, `jetpack`;
 - `x`, `y`, `z` (see Coordinates below);
@@ -91,15 +137,15 @@ again later, call `game.player(id)`.
 | `p:fog(r, g, b)` | p's sky colour only (0..255) |
 | `p:has_role(role)` | logged in as `role` or higher: "trusted", "guard", "mod", "admin", "manager" |
 | `p:kick(reason)` | disconnect p; everyone is told (not bots) |
-| `p:set_class(name)` | next gen CTF: pick that class for p (a living p respawns with it); false when refused |
+| `p:set_class(name)` | **1.0 only.** next gen CTF: pick that class for p (a living p respawns with it); false when refused |
 | `p:set_team(0|1|2)` | spectator, blue or red; the mode's team rules still apply |
 | `p:set_tool(0..3)` | spade, block, gun or grenade; the mode's limits still apply |
 | `p:set_weapon(0|1|2)` | rifle, SMG or shotgun; the usual clip is refilled |
 | `p:set_ammo(clip, reserve)` | set the current and reserve ammunition |
 | `p:set_blocks(n)`, `p:set_grenades(n)` | set the inventory (0..255) |
 | `p:set_score(n)`, `p:set_kills(n)`, `p:set_deaths(n)`, `p:set_assists(n)` | personal scoreboard columns |
-| `p:set_squad(n)` | 0 alone, 1..16; the same rules as the client's squad command |
-| `p:set_jetpack(true|false)` | grant or remove the jetpack for this life |
+| `p:set_squad(n)` | **1.0 only.** 0 alone, 1..16; the same rules as the client's squad command |
+| `p:set_jetpack(true|false)` | **1.0 only.** grant or remove the jetpack for this life |
 
 ## game
 
@@ -114,7 +160,7 @@ again later, call `game.player(id)`.
 | `game.set_score_limit(n)`, `game.set_capture_limit(n)` | the score the match ends at (1..255) |
 | `game.end_match(team)` | the same as `game.win(team)` |
 | `game.team_name(team, name)`, `game.team_color(team, r, g, b)` | the two team labels and colours |
-| `game.next_map()`, `game.set_map(name)`, `game.set_mode(name)` | queued map/mode changes (see Dangerous calls) |
+| `game.next_map()`, `game.set_map(name)`, `game.set_mode(name)` | queued map/mode changes (see Dangerous calls); on the 0.75 server a mode other than `ctf` or `babel` is 1.0 only |
 | `game.run_command(text)` | one console command from the owner's allow-list (see Dangerous calls) |
 | `game.win(team)` | that team wins; the next map starts |
 | `game.time()` | the game clock in seconds |
@@ -130,9 +176,9 @@ again later, call `game.player(id)`.
 | `game.spawn(team)` | the middle of a team's spawn area: x, y |
 | `game.objective(x, y, radius)` | modes only: bots go there and hold it; with no arguments they hunt again |
 | `game.set_intel_spot(team, x, y)`, `game.set_tent_spot(team, x, y)` | modes with `rules = "ctf"`: where a team's intel and tent stand |
-| `game.classes()` | next gen CTF: every class's figures, a list (Commando, Rocketeer, Marksman, Miner) |
-| `game.class(name)` | one class's figures (by name or number 0..3), or nil |
-| `game.set_class(name, figures)` | change a class's figures for this map (see Classes); true, or false and the first key refused |
+| `game.classes()` | **1.0 only.** next gen CTF: every class's figures, a list (Commando, Rocketeer, Marksman, Miner) |
+| `game.class(name)` | **1.0 only.** one class's figures (by name or number 0..3), or nil |
+| `game.set_class(name, figures)` | **1.0 only.** change a class's figures for this map (see Classes); true, or false and the first key refused |
 | `game.ban(p, minutes, reason)` | ban p's address (0 minutes: for good), in the server's ban list |
 | `game.server_info()` | `{name, map, mode, players, max_players, port}` |
 | `game.json_encode(value)` | a string of JSON; a table with keys 1..n is an array, any other an object |
@@ -241,12 +287,15 @@ running. `game.run_command` never accepts `/shutdown`, `/login` or `/logout`,
 rejects newlines and shell chaining, and runs only the listed commands.
 `game.set_map` validates the map name and its files, and refuses paths.
 `game.set_mode` validates the mode name; the map's `map_fits` still applies
-at the next load.
+at the next load. On the 0.75 server (see Profiles) only `ctf` and `babel`
+exist: any other mode is refused with `false` and the profile's reason.
 
 `game.set_teams`/one-team FFA, per-player speed, world-cell edits, entities,
 squad leaders and persistent storage are not exposed yet.
 
 ## Classes
+
+**1.0 only** (see Profiles): the 0.75 server has no classes.
 
 The next gen CTF has four classes. Each is a table of figures; the server
 owner sets them in config.toml (`[classes.<name>]`) and a plugin may change

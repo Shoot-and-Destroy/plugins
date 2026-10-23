@@ -11,6 +11,10 @@
 -- The rules are capture the flag's (rules = "ctf"); the script only moves
 -- the intels and the tents.
 
+-- A Lua game mode: the 0.75 server plays only ctf and babel, so this
+-- plugin is for the 1.0 server alone (first, before anything runs).
+game.supported_profiles("10")
+
 local mode = {name = "push", wire = "ctf", rules = "ctf", mode = true}
 
 local TENT_IN = 0.15 -- the tent this share of the way in from the enemy's spawn
