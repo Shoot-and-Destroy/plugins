@@ -135,6 +135,7 @@ again later, call `game.player(id)`.
 | `p:teleport(x, y, z)` | move p, its own client included |
 | `p:restock()` | full health, blocks, grenades and ammo |
 | `p:fog(r, g, b)` | p's sky colour only (0..255) |
+| `p:drop_crate(kind)` | a supply crate, `kind` `"ammo"` or `"health"`, falls from the sky onto p (a reward). The first player at it who needs it takes it: ammo is the tent's refill, health goes to 100; a full player leaves it for a mate. It goes after 2 minutes on the ground. true when it falls; false with 16 crates out or no ground there. Protocol 1.0 only (nil and the reason on 0.75) |
 | `p:has_role(role)` | logged in as `role` or higher: "trusted", "guard", "mod", "admin", "manager" |
 | `p:kick(reason)` | disconnect p; everyone is told (not bots) |
 | `p:set_class(name)` | **1.0 only.** next gen CTF: pick that class for p (a living p respawns with it); false when refused |
@@ -156,6 +157,7 @@ again later, call `game.player(id)`.
 | `game.find(name)` | the player with that name, or the only one whose name starts with it |
 | `game.notice(text[, team])` | a line every player (or one team) reads |
 | `game.fog(r, g, b)`, `game.get_fog()` | everyone's sky colour |
+| `game.drop_crate(x, y, kind)` | a supply crate (`"ammo"` or `"health"`) falls onto the column x, y (map coordinates; the nearest dry ground), as `p:drop_crate` |
 | `game.score(team)`, `game.set_score(team, n)`, `game.score_limit()` | the scores |
 | `game.set_score_limit(n)`, `game.set_capture_limit(n)` | the score the match ends at (1..255) |
 | `game.end_match(team)` | the same as `game.win(team)` |
