@@ -107,6 +107,10 @@ The arguments `p`, `attacker`, `victim` and `killer` are player tables
 | `on_intel(p, action)` | action is "pickup", "capture" or "drop" | |
 | `on_login(p, role)` | p gave /login the right password for "trusted", "guard", "mod", "admin" or "manager" (p already has the role while asked) | false refuses the login (a second factor, see totp) |
 | `on_message(from, topic, data)` | another plugin called `game.send(topic, data)`; `from` is its name | |
+| `on_bot_think(bot)` | every think of every bot, 5 a second (see Bots) | a goal table, or nil for the mode's own |
+| `on_bot_arrived(bot, name)` | a bot reached the goal this plugin gave it (once per goal) | |
+| `on_bot_stuck(bot, why)` | a bot made no progress toward its goal for a while; why is `"no_progress"` | |
+| `on_bot_team_tick(team, bots)` | once a second for each team (1, 2), with its bots as a list | |
 
 ## Players
 
@@ -121,6 +125,8 @@ again later, call `game.player(id)`.
   the 0.75 server; **1.0 only**);
 - `assists`, `score`, `captures`, `shots`, `hits`, `blocks_placed`;
 - `squad`, `reloading`, `crouching`, `sprinting`, `airborne`, `wade`, `jetpack`;
+- `goal`, `target`: bots only, the name of the goal it follows and the id of
+  the enemy it fights (nil when none);
 - `x`, `y`, `z` (see Coordinates below);
 - `ox`, `oy`, `oz`: where the player looks, as a unit vector.
 
@@ -136,6 +142,7 @@ again later, call `game.player(id)`.
 | `p:restock()` | full health, blocks, grenades and ammo |
 | `p:fog(r, g, b)` | p's sky colour only (0..255) |
 | `p:drop_crate(kind)` | a supply crate, `kind` `"ammo"` or `"health"`, falls from the sky onto p (a reward). The first player at it who needs it takes it: ammo is the tent's refill, health goes to 100; a full player leaves it for a mate. It goes after 2 minutes on the ground. true when it falls; false with 16 crates out or no ground there. Protocol 1.0 only (nil and the reason on 0.75) |
+| `p:sees(q)` | a clear line from p's eye to q's chest (the bots' own sight test) |
 | `p:has_role(role)` | logged in as `role` or higher: "trusted", "guard", "mod", "admin", "manager" |
 | `p:kick(reason)` | disconnect p; everyone is told (not bots) |
 | `p:set_class(name)` | **1.0 only.** next gen CTF: pick that class for p (a living p respawns with it); false when refused |
@@ -189,6 +196,83 @@ again later, call `game.player(id)`.
 | `game.command(name, [options], fn)` | a chat command typed with `/` (see Commands) |
 | `game.store`, `game.store_save()` | a table kept across maps and restarts (see Keeping data) |
 | `game.send(topic, data)` | every other plugin's `on_message(from, topic, data)` at the next tick; `data` is plain data (it crosses as JSON) |
+
+## Bots
+
+Bots are server-side players. A plugin can tell them what to do: it
+decides, and the server does the heavy work (finding the way, seeing,
+aiming, fighting, digging and building). A plugin never walks a path or
+casts rays in Lua: that would cost ten to thirty times what the server's C
+does.
+
+`on_bot_think(bot)` is asked at every think of every bot (five a second),
+before the game mode. It returns a goal table, or nil to let the mode decide.
+The first plugin that returns a table wins. Every field is optional:
+
+| Field | Meaning |
+| --- | --- |
+| `name` | the goal's name, for the logs and `on_bot_arrived` (default `"plugin"`) |
+| `x`, `y` | where to go (map coordinates; default: where the bot stands) |
+| `z` | the floor cell there (its top block, `game.ground(x, y)`); 0 or none: unknown |
+| `exact` | true: that very cell, not just near it |
+| `hold` | stop this close and watch |
+| `watch` | where to look while holding: a point `{x =, y =}` or a player table |
+| `role` | `"attack"` (default), `"defend"`, `"infiltrate"`, `"cover"`, `"rush"`: the way it fights, and its gun when the mode has no classes |
+| `intent` | what the goal is for, a word or a list of words (below) |
+| `rush` | true: run there, ignoring fights |
+| `assault` | true: fight in the open, no walls, no ducking |
+| `walk_only` | true: on foot, no digging and no sneaking |
+| `keep_terrain` | true: not even the spade to get out of a jam |
+| `climb` | 1: build a pillar up to floor `z` in the goal's column; 2: dig down to it |
+| `work` | `{x =, y =, z =, dig = bool, color = 0xRRGGBB}`: within reach, put a block there (or spade it with `dig`) |
+| `camp` | 1: a camper (holds a spot behind a wall), 2: the overwatch (a high spot that sees `home`) |
+| `home` | `{x =, y =, z =}`: what the team protects; defenders post by it and go for enemies near it first |
+| `guard` | `{x =, y =}`: something else to defend; enemies there come first |
+
+| Intent | The bot |
+| --- | --- |
+| `"take"` | is going to take the objective: close to it, it stops for no fight |
+| `"push"` | is an attacker on its way: an enemy farther than 30 blocks does not stop it |
+| `"squad"` | is on its squad's lane: it only takes on enemies within 60 |
+| `"with"` | keeps up with someone (a leader, a carrier): it shoots on the move |
+| `"post"` | holds a post: it fights from it like a camper and never steps aside |
+| `"home"` | works at its own base: its way there digs nothing |
+| `"guard"` | is the defender at its post by `home` |
+| `"chase"` | is after the enemy carrying its team's objective |
+| `"brief"` | listens to the team's plan: it holds still |
+| `"plant"` | takes an explosive to where it goes |
+| `"cover"` | covers a mate |
+
+An unknown role or intent is the plugin's error: the plugin is turned off,
+like any other error.
+
+```lua
+-- every bot of team 1 follows the first admin it finds
+function plugin.on_bot_think(bot)
+    if bot.team ~= 1 then return nil end
+    for _, p in ipairs(game.players()) do
+        if not p.bot and p.alive and p:has_role("admin") then
+            return {name = "follow-admin", x = p.x, y = p.y, hold = 4, intent = "with",
+                    watch = {x = p.x + p.ox * 10, y = p.y + p.oy * 10}}
+        end
+    end
+    return nil
+end
+```
+
+`on_bot_arrived(bot, name)` comes once a bot reaches the goal's `hold`
+(1.5 blocks at least). A goal that follows someone counts as new only when
+its destination jumps far (twice the reach). `on_bot_team_tick(team, bots)`
+comes once a second: the place to hand out jobs ("the two nearest defend")
+that each `on_bot_think` then reads.
+
+What it costs, measured with 120 bots: 3 to 7 microseconds a call, under
+0.15 ms of a 16.7 ms tick. Keep `on_bot_think` short. Work out what the whole
+team needs once a second in `on_bot_team_tick`, not five times a second
+for every bot.
+
+[examples/bot_escort.lua](../examples/bot_escort.lua) is a whole game mode
+on this API: a VIP escort.
 
 ## Commands
 

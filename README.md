@@ -54,7 +54,8 @@ More arrive in batches. The scripts that will not be ported, and why, are in
 Start from [examples/hello.lua](examples/hello.lua). It is short and
 commented. [examples/broken_example.lua](examples/broken_example.lua) shows
 what happens when a plugin fails: the server logs the error and turns off
-only that plugin. Every event and function is listed in
+only that plugin. [examples/bot_escort.lua](examples/bot_escort.lua) is a game
+mode that drives the bots (a VIP escort). Every event and function is listed in
 [docs/api.md](docs/api.md).
 
 To see what a plugin did, run the server with `SP_EVENTLOG=1`. Each
